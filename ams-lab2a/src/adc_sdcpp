@@ -1,0 +1,54 @@
+/*
+ * adc_sd.cpp
+ *
+ *  Created on: Feb 12, 2016
+ *      Author: lexy
+ */
+#include <systemc-ams>
+#include "adc_sd.h"
+
+void adc_sd::processing()
+{
+	double feedback;
+	bool output;
+
+		if (integ2>=0.0)
+			output=true;
+		if (integ2<0.0)
+			output=false;
+
+	if (integ2>=0.0)
+		feedback=1.0;
+	if (integ2<0.0)
+		feedback=-1.0;
+
+	adc_out.write(output);
+
+	double a=0.5;
+	double b=0.5;
+	double c=1.0;
+
+	double s1 = adc_in.read() - feedback;
+
+	double k1 = a * s1;
+	  double s2 = k1 + integ1;
+
+	  double k3 = c * feedback;
+	  double s3 = integ1 - k3;
+
+	  double k2 = b * s3;
+
+	  double s4 = k2 + integ2;
+
+	  integ2 = s2;
+	  integ1 = s4;
+
+}
+
+void adc_sd::ac_processing()
+{
+	sca_ac(adc_out) = 0.25 / (sca_ac_z(2) - 1.5 * sca_ac_z() + 0.75) * sca_ac(adc_in);
+}
+
+
+

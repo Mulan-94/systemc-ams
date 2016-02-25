@@ -1,0 +1,89 @@
+/*
+ * prefilter.cpp
+ *
+ *  Created on: Feb 11, 2016
+ *      Author: lexy
+ */
+
+#include"prefilter.h"
+#include "sin_source_with_noise.h"
+#include <systemc-ams>
+#include <cstdlib> // for std::rand
+#include <cmath>   // for M_PI, std::sin, std::sqrt, and std::log
+
+
+void prefilter::initialize()
+{
+	num(0)=1.0;
+	den(0)=1.0;
+	den(1)=1.0/(2.0 * M_PI * fc);
+}
+
+void prefilter::processing()
+{
+	out_1=ltf1(num, den, in_1);
+}
+
+void prefilter::ac_processing()
+{
+	sca_ac(out_1)= sca_ac_ltf_nd(num, den, sca_ac(in_1));
+}
+
+
+double gauss_rand(double variance)
+{
+  double rnd1, rnd2, Q, Q1, Q2;
+
+  do
+  {
+    rnd1 = static_cast<double>(std::rand()) / RAND_MAX;
+    rnd2 = static_cast<double>(std::rand()) / RAND_MAX;
+
+    Q1 = 2.0 * rnd1 - 1.0;
+    Q2 = 2.0 * rnd2 - 1.0;
+    Q = Q1 * Q1 + Q2 * Q2;
+  }
+  while (Q > 1.0);
+
+  return ( std::sqrt(variance) * ( std::sqrt( - 2.0 * std::log(Q) / Q) * Q1) );
+}
+
+void sin_source_with_noise::set_attributes()    // Set TDF attributes
+{
+  out.set_timestep(1.0, SC_US);                 // Set time step of output port
+}
+
+void sin_source_with_noise::processing()
+{
+  double t = out.get_time().to_seconds();       // Get current time of the sample
+  double n = gauss_rand(variance);
+  double x = ampl * sin(2.0 * M_PI * freq * t) + n; // Calculate sine wave
+  out.write(x);                                     // Write sample to the output
+}
+
+
+int sc_main(int argc, char* argv[])
+{
+	sca_tdf::sca_signal <double>sig_2;
+	sca_tdf::sca_signal <double> sig_1;
+
+	prefilter pref1("prefilter_obj");
+	sin_source_with_noise src1("sine_source");
+
+	src1.out(sig_1);
+	pref1.in_1(sig_1);
+	pref1.out_1(sig_2);
+
+
+	 sca_trace_file* tfp = sca_create_vcd_trace_file("meme");
+
+	 sca_trace(tfp, sig_1, "sig_in");
+	 sca_trace(tfp,sig_2,"sig_out");
+
+	 sc_start(10, SC_MS);
+
+	 sca_close_vcd_trace_file(tfp);
+
+
+	return 0;
+}

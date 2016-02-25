@@ -1,0 +1,29 @@
+/*
+ * testbench.cpp
+ *
+ *  Created on: Feb 8, 2016
+ *      Author: lexy
+ */
+
+#include <systemc-ams.h>
+#include "sin_source.h"
+#include "sink.h"
+
+int sc_main (int argc, char* argv[])
+{
+	sca_tdf::sca_signal<double>sig1;
+
+	sin_source mySource1("src1");
+	sink mySink1("sink1");
+
+	mySource1.out(sig1);
+	mySink1.in(sig1);
+
+	sca_trace_file *tfp= sca_create_vcd_trace_file("testbench");
+	sca_trace(tfp,sig1,"sig1");
+
+	sc_start(10, SC_MS);
+	sca_close_vcd_trace_file(tfp);
+
+	return 0;
+}
